@@ -1,0 +1,5 @@
+config.json
+task_cache.json
+api_keys.yaml
+*.env
+__pycache__/
