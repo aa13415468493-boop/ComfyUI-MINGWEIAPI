@@ -1,6 +1,31 @@
 # ComfyUI-MINGWEIAPI
 
+<div align="center">
+  <img src="mingwei_web/icon/1.jpg" alt="YunJee Logo" width="520">
+  <br>
+  <br>
+  <img src="https://img.shields.io/badge/ComfyUI-Custom%20Nodes-111111?style=for-the-badge" alt="ComfyUI Custom Nodes">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/API-KIE.AI-6E56CF?style=for-the-badge" alt="KIE.AI">
+  <img src="https://img.shields.io/badge/API-T8Star-0EA5E9?style=for-the-badge" alt="T8Star API">
+  <img src="https://img.shields.io/badge/UI-%E4%B8%AD%E6%96%87%E5%9B%BE%E6%A0%87-FF6B6B?style=for-the-badge" alt="中文图标 UI">
+</div>
+
+<br>
+
 ComfyUI-MINGWEIAPI 是一个面向 ComfyUI 的 MINGWEI API 聚合节点包。它把多个常用图像、视频、音频和批量工作流 API 整合到 `🤖MINGWEI-API` 菜单下，方便在 ComfyUI 里直接提交任务、查询任务、下载结果，并把图片或视频结果继续连接到后续节点。
+
+## 快速导航
+
+| 图标 | 子菜单 | 主要功能 |
+| :--: | --- | --- |
+| 🎬 | `MW-VEO` | Veo 3.1 视频生成、视频扩展、视频保存工作流 |
+| 🎞️ | `MW-gemini-omni` | Gemini Omni 视频生成、视频转 URL、音频 ID、角色 ID |
+| 🚀 | `MW-grok-1.5` | Grok Imagine Video 1.5 视频生成 |
+| 🎨 | `MW-gpt2.0` | GPT Image 2.0 图像生成、提交、查询、下载、批量处理 |
+| 🍌 | `MW-nano banana` | nano banana 图像生成、编辑、异步任务、表格批量 |
+| 📹 | `MW-SD2` | Seedance 2.0 视频生成、素材上传、素材绑定 |
+| 🧭 | `mingwei_web` | ComfyUI 前端帮助按钮和图标资源 |
 
 ## API 第三方供应商
 
