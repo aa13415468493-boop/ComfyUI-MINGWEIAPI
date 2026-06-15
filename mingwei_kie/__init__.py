@@ -1450,7 +1450,7 @@ class Veo31Kie:
     RETURN_TYPES = (IO.VIDEO, "STRING", "STRING", "STRING")
     RETURN_NAMES = ("🎞️ video", "🔗 video_url", "🧾 response_json", "🆔 task_id")
     FUNCTION = "generate"
-    CATEGORY = "🤖MINGWEI-API/MW-VEO"
+    CATEGORY = "🤖MINGWEI-API/MW-VEO/kie-veo"
 
     def _collect_image_urls(
         self,
@@ -1718,7 +1718,7 @@ class Veo31ExtendKie(Veo31Kie):
     RETURN_TYPES = (IO.VIDEO, "STRING", "STRING", "STRING")
     RETURN_NAMES = ("🎞️ video", "🔗 video_url", "📄 response_json", "🆔 task_id")
     FUNCTION = "extend"
-    CATEGORY = "🤖MINGWEI-API/MW-VEO"
+    CATEGORY = "🤖MINGWEI-API/MW-VEO/kie-veo"
 
     def extend(
         self,
@@ -1828,6 +1828,346 @@ class Veo31ExtendKie(Veo31Kie):
             return (VideoFromFile(video_path), video_url, response_json, extend_task_id)
         except Exception:
             return (_LocalOrUrlVideo(video_path), video_url, response_json, extend_task_id)
+
+
+class KuaiVeo3VideoKie:
+    MODELS = [
+        "veo_3_1_components_vip",
+        "veo_3_1_fast_components_vip",
+        "veo_3_1_fast_vip",
+        "veo_3_1_lite_vip",
+        "veo_3_1_vip",
+    ]
+    TEMP_IMAGE_UPLOAD_URL = "https://imageproxy.zhongzhuan.chat/api/upload"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "generationType": (["TEXT_2_VIDEO", "FIRST_AND_LAST_FRAMES_2_VIDEO", "REFERENCE_2_VIDEO"], {"default": "TEXT_2_VIDEO", "display_name": "🎬 生成类型"}),
+                "model": (cls.MODELS, {"default": "veo_3_1_fast_vip", "display_name": "🧠 模型"}),
+                "prompt": ("STRING", {"multiline": True, "default": "", "display_name": "📝 提示词"}),
+                "aspect_ratio": (["16:9", "9:16"], {"default": "16:9", "display_name": "🖼️ 比例"}),
+                "duration": (["8s"], {"default": "8s", "display_name": "⏱️ 秒数"}),
+                "enhance_prompt": ("BOOLEAN", {"default": True, "display_name": "🌍 启用翻译"}),
+                "enable_upsample": ("BOOLEAN", {"default": True, "display_name": "📺 启用超分"}),
+                "veo_fl_close": ("BOOLEAN", {"default": False, "display_name": "🧩 关闭自动首尾帧"}),
+                "base_url": ("STRING", {"default": "https://api.kuai.host", "display_name": "🌐 BaseURL"}),
+                "insecure_ssl": ("BOOLEAN", {"default": False, "display_name": "🔒 跳过SSL验证"}),
+                "api_key": ("STRING", {"default": "", "display_name": "🔑 API密钥"}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+                "image_url": ("STRING", {"default": "", "display_name": "🔗 图片URL1"}),
+                "image_2": ("IMAGE",),
+                "image_url_2": ("STRING", {"default": "", "display_name": "🔗 图片URL2"}),
+                "image_3": ("IMAGE",),
+                "image_url_3": ("STRING", {"default": "", "display_name": "🔗 图片URL3"}),
+            },
+        }
+
+    RETURN_TYPES = (IO.VIDEO, "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("🎞️ video", "🔗 video_url", "📄 response_json", "🆔 task_id")
+    FUNCTION = "generate"
+    CATEGORY = "🤖MINGWEI-API/MW-VEO/kuai-veo"
+
+    def _resolve_kuai_api_key(self, widget_value):
+        for key in ("KUAI_API_KEY", "KUAI_HOST_API_KEY", "MW_KUAI_API_KEY"):
+            value = os.environ.get(key)
+            if _is_nonempty_string(value):
+                return value.strip()
+        return (widget_value or "").strip()
+
+    def _headers(self, api_key):
+        return {
+            "Authorization": "Bearer {}".format(api_key),
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+    def _api_url(self, base_url, endpoint):
+        clean_base = (base_url or "https://api.kuai.host").strip().rstrip("/")
+        if not clean_base:
+            clean_base = "https://api.kuai.host"
+        return clean_base + endpoint
+
+    def _find_http_url(self, value):
+        if isinstance(value, dict):
+            for key in ("url", "URL", "image_url", "imageUrl", "download_url", "downloadUrl", "link", "src"):
+                if key in value:
+                    found = self._find_http_url(value.get(key))
+                    if found:
+                        return found
+            for item in value.values():
+                found = self._find_http_url(item)
+                if found:
+                    return found
+        elif isinstance(value, list):
+            for item in value:
+                found = self._find_http_url(item)
+                if found:
+                    return found
+        else:
+            import re
+
+            match = re.search(r"https?://[^\s\"'<>]+", str(value or ""))
+            if match:
+                return match.group(0).rstrip(",.;)]}")
+        return ""
+
+    def _upload_image_to_temp_url(self, image_tensor, insecure_ssl=False):
+        if _requests is None:
+            raise ValueError("当前环境缺少 requests，无法自动上传图片为临时 URL")
+
+        pil_image = tensor2pil(image_tensor)[0]
+        if getattr(pil_image, "mode", "") not in ("RGB", "RGBA"):
+            pil_image = pil_image.convert("RGB")
+
+        buf = BytesIO()
+        pil_image.save(buf, format="PNG", optimize=True)
+        file_bytes = buf.getvalue()
+        file_name = "kuai_veo_{}.png".format(uuid.uuid4().hex[:10])
+
+        def post_file(field_name):
+            return _requests.post(
+                self.TEMP_IMAGE_UPLOAD_URL,
+                files={field_name: (file_name, file_bytes, "image/png")},
+                timeout=120,
+                verify=(not bool(insecure_ssl)),
+            )
+
+        try:
+            response = post_file("file")
+            if int(getattr(response, "status_code", 0) or 0) >= 400:
+                response = post_file("image")
+        except Exception as error:
+            raise ValueError("上传图片到临时图床失败: {}".format(error))
+
+        text = getattr(response, "text", "")
+        if int(getattr(response, "status_code", 0) or 0) >= 400:
+            raise ValueError("上传图片到临时图床失败 HTTP {}: {}".format(response.status_code, text))
+
+        try:
+            result = response.json()
+        except Exception:
+            result = text
+
+        image_url = self._find_http_url(result)
+        if not image_url:
+            raise ValueError("上传图片成功但未返回图片 URL: {}".format(result))
+        return image_url
+
+    def _collect_image_urls(
+        self,
+        generation_type,
+        insecure_ssl,
+        image=None,
+        image_url="",
+        image_2=None,
+        image_url_2="",
+        image_3=None,
+        image_url_3="",
+    ):
+        urls = []
+        for url_value, image_value in (
+            (image_url, image),
+            (image_url_2, image_2),
+            (image_url_3, image_3),
+        ):
+            clean_url = (url_value or "").strip()
+            if clean_url:
+                urls.append(clean_url)
+            elif image_value is not None:
+                urls.append(self._upload_image_to_temp_url(image_value, insecure_ssl=bool(insecure_ssl)))
+
+        if generation_type == "TEXT_2_VIDEO":
+            return []
+        if generation_type == "FIRST_AND_LAST_FRAMES_2_VIDEO":
+            if not urls:
+                raise ValueError("图生视频模式需要至少提供 1 张图片或图片URL")
+            return urls[:2]
+        if generation_type == "REFERENCE_2_VIDEO":
+            if not urls:
+                raise ValueError("三图参考模式需要至少提供 1 张参考图或图片URL")
+            return urls[:3]
+        return []
+
+    def _extract_task_id(self, result):
+        if not isinstance(result, dict):
+            return ""
+        for key in ("id", "task_id", "taskId"):
+            value = result.get(key)
+            if _is_nonempty_string(value):
+                return value.strip()
+        data = result.get("data")
+        if isinstance(data, dict):
+            for key in ("id", "task_id", "taskId"):
+                value = data.get(key)
+                if _is_nonempty_string(value):
+                    return value.strip()
+        return ""
+
+    def _extract_video_url(self, result):
+        if not isinstance(result, dict):
+            return ""
+        candidates = []
+        for container in (result, result.get("data"), result.get("detail")):
+            if not isinstance(container, dict):
+                continue
+            for key in ("upsample_video_url", "video_url", "videoUrl", "url", "result_url", "resultUrl"):
+                value = container.get(key)
+                if _is_nonempty_string(value):
+                    candidates.append(value.strip())
+        for value in candidates:
+            if value.startswith("http"):
+                return value
+        return ""
+
+    def _poll_result(self, base_url, api_key, task_id, insecure_ssl=False, poll_interval_s=5.0, max_wait_s=1800.0):
+        started = time.time()
+        while True:
+            result = _http_json(
+                "GET",
+                self._api_url(base_url, "/v1/video/query"),
+                headers=self._headers(api_key),
+                params={"id": task_id},
+                timeout=60,
+                insecure_ssl=bool(insecure_ssl),
+            )
+            data = result.get("data") if isinstance(result, dict) else None
+            detail = result.get("detail") if isinstance(result, dict) else None
+            status = ""
+            for container in (result, data, detail):
+                if isinstance(container, dict) and _is_nonempty_string(container.get("status")):
+                    status = container.get("status").strip().lower()
+                    break
+
+            if status in ("completed", "success", "succeeded", "finished"):
+                return result
+            if status in ("failed", "fail", "error", "cancelled", "canceled"):
+                raise ValueError("kuai-veo3 任务失败: {}".format(result))
+
+            video_url = self._extract_video_url(result)
+            if video_url and not status:
+                return result
+
+            if time.time() - started >= max_wait_s:
+                raise TimeoutError("kuai-veo3 任务超时未完成: {}".format(task_id))
+            time.sleep(poll_interval_s)
+
+    def generate(
+        self,
+        generationType,
+        model,
+        prompt,
+        aspect_ratio,
+        duration,
+        enhance_prompt,
+        enable_upsample,
+        veo_fl_close,
+        base_url,
+        insecure_ssl,
+        api_key,
+        image=None,
+        image_url="",
+        image_2=None,
+        image_url_2="",
+        image_3=None,
+        image_url_3="",
+    ):
+        resolved_api_key = self._resolve_kuai_api_key(api_key)
+        if not resolved_api_key:
+            raise ValueError("缺少 Kuai API 密钥，请在节点内填写 api_key")
+
+        prompt_text = (prompt or "").strip()
+        if not prompt_text:
+            raise ValueError("提示词不能为空")
+
+        generation_type = (generationType or "TEXT_2_VIDEO").strip() or "TEXT_2_VIDEO"
+        image_urls = self._collect_image_urls(
+            generation_type=generation_type,
+            insecure_ssl=insecure_ssl,
+            image=image,
+            image_url=image_url,
+            image_2=image_2,
+            image_url_2=image_url_2,
+            image_3=image_3,
+            image_url_3=image_url_3,
+        )
+
+        request_body = {
+            "model": (model or "veo_3_1_fast_vip").strip() or "veo_3_1_fast_vip",
+            "prompt": prompt_text,
+            "aspect_ratio": (aspect_ratio or "16:9").strip() or "16:9",
+            "enhance_prompt": bool(enhance_prompt),
+            "enable_upsample": bool(enable_upsample),
+        }
+        if image_urls:
+            request_body["images"] = image_urls
+        if generation_type == "REFERENCE_2_VIDEO":
+            request_body["veo_fl_close"] = True
+
+        try:
+            import comfy.utils
+
+            pbar = comfy.utils.ProgressBar(100)
+        except Exception:
+            class _DummyPbar:
+                def update_absolute(self, _v: int):
+                    return None
+
+            pbar = _DummyPbar()
+        pbar.update_absolute(10)
+
+        submit_result = _http_json(
+            "POST",
+            self._api_url(base_url, "/v1/video/create"),
+            headers=self._headers(resolved_api_key),
+            json_body=request_body,
+            timeout=300,
+            insecure_ssl=bool(insecure_ssl),
+        )
+        pbar.update_absolute(35)
+
+        task_id = self._extract_task_id(submit_result)
+        if not task_id:
+            raise ValueError("kuai-veo3 提交成功但未返回任务ID: {}".format(submit_result))
+
+        task_data = self._poll_result(
+            base_url=base_url,
+            api_key=resolved_api_key,
+            task_id=task_id,
+            poll_interval_s=5.0,
+            max_wait_s=1800.0,
+            insecure_ssl=bool(insecure_ssl),
+        )
+        video_url = self._extract_video_url(task_data)
+        pbar.update_absolute(85)
+
+        if not video_url:
+            raise ValueError("kuai-veo3 任务未返回视频URL: {}".format(task_data))
+
+        video_path = _download_video_to_temp(video_url, insecure_ssl=bool(insecure_ssl))
+        pbar.update_absolute(100)
+
+        response_json = json.dumps(
+            {
+                "request": request_body,
+                "submit_response": submit_result,
+                "taskId": task_id,
+                "task_data": task_data,
+                "video_url": video_url,
+                "video_path": video_path,
+            },
+            ensure_ascii=False,
+        )
+
+        try:
+            from comfy_api.input_impl import VideoFromFile
+
+            return (VideoFromFile(video_path), video_url, response_json, task_id)
+        except Exception:
+            return (_LocalOrUrlVideo(video_path), video_url, response_json, task_id)
 
 
 class MWGeminiOmniVideoKie:
@@ -2670,6 +3010,7 @@ class MWGeminiOmniCharacterKie:
 NODE_CLASS_MAPPINGS = {
     "Veo31Kie": Veo31Kie,
     "Veo31ExtendKie": Veo31ExtendKie,
+    "KuaiVeo3VideoKie": KuaiVeo3VideoKie,
     "MWGeminiOmniVideoKie": MWGeminiOmniVideoKie,
     "MWGrokImagineVideoKie": MWGrokImagineVideoKie,
     "MWGeminiOmniVideoToUrlKie": MWGeminiOmniVideoToUrlKie,
@@ -2680,6 +3021,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "Veo31Kie": "veo3.1-kie",
     "Veo31ExtendKie": "veo3.1-extend-kie",
+    "KuaiVeo3VideoKie": "kuai-veo3视频生成",
     "MWGeminiOmniVideoKie": "MW-gemini-omni-video-kie",
     "MWGrokImagineVideoKie": "MW-grok-imagine-video-kie",
     "MWGeminiOmniVideoToUrlKie": "MW-gemini-omni-video-to-url-kie",

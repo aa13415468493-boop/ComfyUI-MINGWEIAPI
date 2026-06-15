@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/API-KIE.AI-6E56CF?style=for-the-badge" alt="KIE.AI">
   <img src="https://img.shields.io/badge/API-T8Star-0EA5E9?style=for-the-badge" alt="T8Star API">
+  <img src="https://img.shields.io/badge/API-Kuai%20Host-22C55E?style=for-the-badge" alt="Kuai Host API">
   <img src="https://img.shields.io/badge/UI-%E4%B8%AD%E6%96%87%E5%9B%BE%E6%A0%87-FF6B6B?style=for-the-badge" alt="中文图标 UI">
 </div>
 
@@ -19,7 +20,7 @@ ComfyUI-MINGWEIAPI 是一个面向 ComfyUI 的 MINGWEI API 聚合节点包。它
 
 | 图标 | 子菜单 | 主要功能 |
 | :--: | --- | --- |
-| 🎬 | `MW-VEO` | Veo 3.1 视频生成、视频扩展、视频保存工作流 |
+| 🎬 | `MW-VEO` | KIE / Kuai VEO 视频生成、视频扩展、视频保存工作流 |
 | 🎞️ | `MW-gemini-omni` | Gemini Omni 视频生成、视频转 URL、音频 ID、角色 ID |
 | 🚀 | `MW-grok-1.5` | Grok Imagine Video 1.5 视频生成 |
 | 🎨 | `MW-gpt2.0` | GPT Image 2.0 图像生成、提交、查询、下载、批量处理 |
@@ -33,6 +34,7 @@ ComfyUI-MINGWEIAPI 是一个面向 ComfyUI 的 MINGWEI API 聚合节点包。它
 
 - [KIE.AI](https://kie.ai/zh-CN)
 - [T8Star API](https://ai.t8star.org/)
+- [Kuai Host API](https://api.kuai.host/)
 
 具体模型能力、接口规则、计费方式和服务可用性，以对应第三方供应商页面和接口文档为准。
 
@@ -76,6 +78,8 @@ pip install -r requirements.txt
 ```text
 KIE_API_KEY
 KIEAI_API_KEY
+KUAI_API_KEY
+KUAI_HOST_API_KEY
 ZHENZHEN_API_KEY
 BLT_API_KEY
 ```
@@ -88,8 +92,9 @@ BLT_API_KEY
 
 VEO 视频相关节点，主要用于：
 
-- Veo 3.1 视频生成
-- Veo 3.1 视频扩展
+- KIE Veo 3.1 视频生成
+- KIE Veo 3.1 视频扩展
+- Kuai VEO 文生视频、首尾帧图生视频、三图参考生视频
 - 视频 URL 输出、响应信息输出和任务 ID 输出
 - 支持常用比例、分辨率、秒数、图片输入等参数
 

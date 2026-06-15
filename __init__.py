@@ -46,6 +46,7 @@ _UI_TARGET_MENUS = (
 _NODE_DISPLAY_NAME_OVERRIDES = {
     "Veo31Kie": "🎬 MW-VEO 视频生成",
     "Veo31ExtendKie": "🎞️ MW-VEO 扩展视频",
+    "KuaiVeo3VideoKie": "🎬 kuai-veo3视频生成",
     "MWGeminiOmniVideoKie": "🎬 MW-gemini-omni 视频生成",
     "MWGeminiOmniVideoToUrlKie": "🔗 MW-gemini-omni 视频转URL",
     "MWGeminiOmniAudioKie": "🎧 MW-gemini-omni 创建音频",
@@ -118,7 +119,7 @@ _INPUT_DISPLAY_NAME_OVERRIDES = {
     "enable_translation": "🌍 启用翻译",
     "insecure_ssl": "🔒 跳过SSL验证",
     "api_key": "🔑 API密钥",
-    "image_url": "🔗 图片URL",
+    "image_url": "🔗 图像1 url",
     "video_url": "🔗 视频URL",
     "video_start": "▶️ 视频开始秒",
     "video_ends": "⏹️ 视频结束秒",
@@ -135,7 +136,7 @@ _INPUT_DISPLAY_NAME_OVERRIDES = {
     "start_time": "⏱️ 开始秒",
     "end_time": "⏱️ 结束秒",
     "video_path": "🎞️ 本地视频路径",
-    "image": "🖼️ 图像",
+    "image": "🖼️ 图像1",
     "upload_url": "🔗 上传URL",
     "format": "🧾 格式",
     "quality": "✨ 质量",
@@ -183,10 +184,13 @@ def _input_display_name(key, current):
     key_text = str(key)
     if key_text in _INPUT_DISPLAY_NAME_OVERRIDES:
         return _INPUT_DISPLAY_NAME_OVERRIDES[key_text]
+    if key_text.startswith("image_url_"):
+        tail = key_text.rsplit("_", 1)[-1]
+        if tail.isdigit():
+            return "🔗 图像{} url".format(tail)
+        return "🔗 图像 url"
     if key_text.startswith("image_"):
         return _numbered_label(key_text, "🖼️", "图像")
-    if key_text.startswith("image_url_"):
-        return _numbered_label(key_text, "🔗", "图片URL")
     if key_text.startswith("audio_id_"):
         return _numbered_label(key_text, "🎧", "音频ID")
     if key_text.startswith("character_id_"):
