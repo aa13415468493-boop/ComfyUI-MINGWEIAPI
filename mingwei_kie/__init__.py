@@ -1429,7 +1429,7 @@ class Veo31Kie:
                 "aspect_ratio": (["16:9", "9:16", "Auto"], {"default": "16:9", "display_name": "🖼️ 视频比例"}),
                 "resolution": (["720p", "1080p", "4k"], {"default": "720p", "display_name": "📺 分辨率"}),
                 "duration": (["4s", "6s", "8s"], {"default": "8s", "display_name": "⏱️ 秒数"}),
-                "seed": ("INT", {"default": 12345, "min": 10000, "max": 99999, "display_name": "🎲 随机种子"}),
+                "seed": ("INT", {"default": 12345, "min": 10000, "max": 99999, "control_after_generate": True, "display_name": "🎲 随机种子"}),
                 "watermark": ("STRING", {"default": "", "display_name": "🏷️ 水印"}),
                 "call_back_url": ("STRING", {"default": "", "display_name": "🔔 回调地址"}),
                 "enable_fallback": ("BOOLEAN", {"default": False, "display_name": "🛟 启用回退"}),
@@ -1849,6 +1849,7 @@ class KuaiVeo3VideoKie:
                 "prompt": ("STRING", {"multiline": True, "default": "", "display_name": "📝 提示词"}),
                 "aspect_ratio": (["16:9", "9:16"], {"default": "16:9", "display_name": "🖼️ 比例"}),
                 "duration": (["8s"], {"default": "8s", "display_name": "⏱️ 秒数"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "display_name": "🎲 随机种子"}),
                 "enhance_prompt": ("BOOLEAN", {"default": True, "display_name": "🌍 启用翻译"}),
                 "enable_upsample": ("BOOLEAN", {"default": True, "display_name": "📺 启用超分"}),
                 "veo_fl_close": ("BOOLEAN", {"default": False, "display_name": "🧩 关闭自动首尾帧"}),
@@ -2062,6 +2063,7 @@ class KuaiVeo3VideoKie:
         prompt,
         aspect_ratio,
         duration,
+        seed,
         enhance_prompt,
         enable_upsample,
         veo_fl_close,
@@ -2082,6 +2084,15 @@ class KuaiVeo3VideoKie:
         prompt_text = (prompt or "").strip()
         if not prompt_text:
             raise ValueError("提示词不能为空")
+
+        try:
+            seed_value = int(seed)
+        except Exception:
+            seed_value = 0
+        if seed_value < 0:
+            seed_value = 0
+        if seed_value > 0xffffffffffffffff:
+            seed_value = 0xffffffffffffffff
 
         generation_type = (generationType or "TEXT_2_VIDEO").strip() or "TEXT_2_VIDEO"
         image_urls = self._collect_image_urls(
@@ -2158,6 +2169,7 @@ class KuaiVeo3VideoKie:
                 "task_data": task_data,
                 "video_url": video_url,
                 "video_path": video_path,
+                "local_seed": seed_value,
             },
             ensure_ascii=False,
         )
